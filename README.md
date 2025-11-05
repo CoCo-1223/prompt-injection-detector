@@ -1,4 +1,4 @@
-# 🛡️ 프롬프트 주입 감지기 (Prompt-Injection-Detector)
+## 🛡️ 프롬프트 주입 감지기 (Prompt-Injection-Detector)
 
 > WASP LLM Top 10의 1번 위협인 '프롬프트 인젝션(LLM01)' 공격을 방어하기 위한 다층 방어 게이트웨이 프로토타입입니다.
 
@@ -11,11 +11,11 @@
 본 게이트웨이는 4단계의 다층 방어(Defense-in-Depth) 전략을 사용합니다.
 
 * **[L1] 룰 기반 필터 (Rule-based Filter)**
-    * [cite_start]`ignore`, `disregard` 등 알려진 공격 키워드[cite: 121-124]를 1차적으로 차단합니다.
+    * `ignore`, `disregard` 등 알려진 공격 키워드를 1차적으로 차단합니다.
 * **[L2] 프롬프트 재구성 (Prompt Reconstruction)**
     * 사용자의 입력을 단순 '데이터'로 취급하도록 프롬프트를 구조적으로 재구성하여, 공격 명령이 아닌 텍스트로 무력화합니다.
 * **[L3] 카나리(Canary) 탐지 (Heuristic Detection)**
-    * [cite_start]`Rebuff` 라이브러리의 아이디어[cite: 70-73]를 차용, 사용자가 모르는 '미끼(카나리) 단어'를 프롬프트에 몰래 삽입합니다.
+    * `Rebuff` 라이브러리의 아이디어를 차용, 사용자가 모르는 '미끼(카나리) 단어'를 프롬프트에 몰래 삽입합니다.
     * 만약 AI의 응답에 이 카나리 단어가 포함되면, AI가 탈취되어 컨텍스트를 유출한 것으로 판단하고 즉시 차단합니다.
 * **[L4] 출력값 필터 (Output Filtering)**
     * AI의 응답에 시스템 프롬프트의 '비밀 코드'나 'API 키' 등 민감 정보가 포함되어 있는지 마지막으로 검증하여 유출을 방지합니다.
@@ -24,7 +24,7 @@
 
 ## 🛠️ 기술 스택 (Tech Stack)
 
-* [cite_start]**Backend**: Python 3.9+, Flask[cite: 136]
+* **Backend**: Python 3.9+, Flask
 * **LLM API**: Google Gemini (or OpenAI)
 * **Frontend**: HTML, CSS, JavaScript (Fetch API)
 
