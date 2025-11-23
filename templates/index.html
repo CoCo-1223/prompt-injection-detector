@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드 - 프롬프트 인젝션 방어 시스템{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-shield-lock"></i> 프롬프트 인젝션 방어 시스템
+        </h1>
+        <p class="lead">
+            AI 애플리케이션을 프롬프트 인젝션 공격으로부터 보호하는 3단계 방어 시스템
+        </p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- 통계 카드 -->
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-activity"></i> 전체 요청
+                </h5>
+                <h2 class="mb-0">{{ stats.total_requests }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-danger">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-exclamation-triangle"></i> 악성 탐지
+                </h5>
+                <h2 class="mb-0">{{ stats.malicious_requests }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-shield-x"></i> 차단됨
+                </h5>
+                <h2 class="mb-0">{{ stats.blocked_count }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-check-circle"></i> 탐지율
+                </h5>
+                <h2 class="mb-0">{{ stats.success_rate }}%</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3단계 방어 시스템 설명 -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h2 class="mb-4">🛡️ 3단계 방어 시스템</h2>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h4 class="card-title">
+                    <span class="badge bg-danger">Layer 1</span> 입력 필터
+                </h4>
+                <p class="card-text">
+                    <strong>규칙 기반 탐지</strong><br>
+                    사용자 입력이 AI에 전달되기 전에 알려진 공격 패턴을 검사합니다.
+                </p>
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check-circle text-success"></i> "ignore previous" 패턴</li>
+                    <li><i class="bi bi-check-circle text-success"></i> 정보 추출 시도</li>
+                    <li><i class="bi bi-check-circle text-success"></i> 탈옥 시도</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h4 class="card-title">
+                    <span class="badge bg-warning">Layer 2</span> 프롬프트 재구성
+                </h4>
+                <p class="card-text">
+                    <strong>구조적 방어</strong><br>
+                    사용자 입력을 '명령어'가 아닌 '데이터'로 취급하도록 프롬프트를 재구성합니다.
+                </p>
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check-circle text-success"></i> 입력 격리</li>
+                    <li><i class="bi bi-check-circle text-success"></i> 컨텍스트 명확화</li>
+                    <li><i class="bi bi-check-circle text-success"></i> 우회 공격 차단</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h4 class="card-title">
+                    <span class="badge bg-info">Layer 3</span> 출력 필터
+                </h4>
+                <p class="card-text">
+                    <strong>유출 방지</strong><br>
+                    AI 응답에 민감 정보가 포함되었는지 검사하여 최종 방어선을 구축합니다.
+                </p>
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check-circle text-success"></i> 비밀 코드 검사</li>
+                    <li><i class="bi bi-check-circle text-success"></i> 시스템 정보 차단</li>
+                    <li><i class="bi bi-check-circle text-success"></i> 민감 데이터 필터링</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 빠른 시작 가이드 -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h2 class="mb-4">🚀 빠른 시작</h2>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">1️⃣ 취약한 챗봇 체험</h5>
+                <p class="card-text">
+                    방어 기능이 없는 챗봇에서 프롬프트 인젝션 공격이 어떻게 성공하는지 확인하세요.
+                </p>
+                <a href="/vulnerable" class="btn btn-danger">
+                    <i class="bi bi-exclamation-triangle"></i> 취약한 챗봇으로 이동
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">2️⃣ 방어 시스템 테스트</h5>
+                <p class="card-text">
+                    3단계 방어가 적용된 챗봇에서 동일한 공격이 어떻게 차단되는지 확인하세요.
+                </p>
+                <a href="/protected" class="btn btn-success">
+                    <i class="bi bi-shield-check"></i> 방어 적용 챗봇으로 이동
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mt-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">3️⃣ Before/After 비교</h5>
+                <p class="card-text">
+                    동일한 공격을 두 버전에 동시에 시도하여 방어 효과를 직접 비교하세요.
+                </p>
+                <a href="/comparison" class="btn btn-primary">
+                    <i class="bi bi-arrow-left-right"></i> 비교 분석으로 이동
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mt-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">4️⃣ 공격 시뮬레이터</h5>
+                <p class="card-text">
+                    사전 정의된 공격 시나리오를 사용하여 체계적인 테스트를 수행하세요.
+                </p>
+                <a href="/attack-simulator" class="btn btn-warning">
+                    <i class="bi bi-bug"></i> 공격 시뮬레이터로 이동
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- OWASP LLM01 설명 -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h4><i class="bi bi-info-circle"></i> OWASP LLM Top 10 - LLM01: 프롬프트 인젝션</h4>
+            <p>
+                프롬프트 인젝션은 <strong>OWASP LLM Top 10</strong>에서 1위로 선정된 가장 위험한 AI 보안 위협입니다.
+                악의적으로 조작된 입력을 통해 AI 모델이 의도하지 않은 동작을 수행하도록 유도하여,
+                민감한 정보 유출, 시스템 오남용, 부적절한 콘텐츠 생성 등의 문제를 야기할 수 있습니다.
+            </p>
+            <p class="mb-0">
+                <strong>이 프로젝트는</strong> 이러한 위협에 대응하는 실시간 탐지 및 방어 시스템을 구현하여
+                기업 환경에서 AI 서비스를 안전하게 사용할 수 있도록 합니다.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

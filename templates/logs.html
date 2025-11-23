@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}로그 - 프롬프트 인젝션 방어 시스템{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-journal-text"></i> 탐지 로그
+        </h1>
+        <p class="lead">
+            모든 요청과 탐지 결과를 실시간으로 모니터링하세요.
+        </p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="mb-0">
+                            <i class="bi bi-table"></i> 탐지 로그
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" id="filterAll">전체</button>
+                            <button class="btn btn-sm btn-outline-danger" id="filterMalicious">악성만</button>
+                            <button class="btn btn-sm btn-outline-success" id="filterBlocked">차단만</button>
+                        </div>
+                        <button class="btn btn-sm btn-primary ms-2" id="refreshBtn">
+                            <i class="bi bi-arrow-clockwise"></i> 새로고침
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm" id="logTable">
+                        <thead>
+                            <tr>
+                                <th width="10%">시간</th>
+                                <th width="5%">모드</th>
+                                <th width="30%">입력</th>
+                                <th width="10%">위험도</th>
+                                <th width="15%">탐지 방법</th>
+                                <th width="15%">패턴</th>
+                                <th width="10%">권장 조치</th>
+                                <th width="5%">상세</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logBody">
+                            {% if logs %}
+                                {% for log in logs %}
+                                <tr class="{% if log.is_malicious %}table-danger{% endif %}" data-malicious="{{ log.is_malicious }}" data-recommendation="{{ log.recommendation }}">
+                                    <td>
+                                        <small>
+                                            {% if log.timestamp %}
+                                                {% set timestamp_str = log.timestamp | string %}
+                                                {% if '.' in timestamp_str %}
+                                                    {{ timestamp_str.split('.')[0] }}
+                                                {% else %}
+                                                    {{ timestamp_str }}
+                                                {% endif %}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if log.is_vulnerable_mode %}
+                                            <span class="badge bg-danger" title="취약한 모드">
+                                                <i class="bi bi-shield-x"></i>
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success" title="방어 모드">
+                                                <i class="bi bi-shield-check"></i>
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ log.user_input[:50] }}{% if log.user_input|length > 50 %}...{% endif %}</small>
+                                    </td>
+                                    <td>
+                                        {% set risk_percent = (log.risk_score * 100)|int %}
+                                        <div class="progress" data-height="20">
+                                            <div class="progress-bar risk-bar" 
+                                                 role="progressbar" 
+                                                 data-risk="{{ risk_percent }}"
+                                                 aria-valuenow="{{ risk_percent }}"
+                                                 aria-valuemin="0"
+                                                 aria-valuemax="100">
+                                                {{ risk_percent }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ log.detection_method or 'N/A' }}</span>
+                                    </td>
+                                    <td>
+                                        <small>
+                                            {% if log.detected_patterns %}
+                                                {{ log.detected_patterns[:30] }}...
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if log.recommendation == 'BLOCK' %}
+                                            <span class="badge bg-danger">차단</span>
+                                        {% elif log.recommendation == 'WARN' %}
+                                            <span class="badge bg-warning">경고</span>
+                                        {% else %}
+                                            <span class="badge bg-success">허용</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary view-detail" data-log-id="{{ log.id }}">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">
+                                        로그가 없습니다.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 상세 정보 모달 -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle"></i> 로그 상세 정보
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- 동적으로 채워짐 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Jinja2 변수를 JavaScript로 안전하게 전달
+    const allLogsData = JSON.parse('{{ logs | tojson | safe }}');
+
+    // Progress bar 스타일 적용
+    $('.progress[data-height]').each(function() {
+        $(this).css('height', $(this).data('height') + 'px');
+    });
+
+    $('.risk-bar').each(function() {
+        const risk = $(this).data('risk');
+        $(this).css('width', risk + '%');
+        
+        // 위험도에 따른 색상 변경
+        if (risk > 70) {
+            $(this).addClass('bg-danger');
+        } else if (risk > 40) {
+            $(this).addClass('bg-warning');
+        } else {
+            $(this).addClass('bg-success');
+        }
+    });
+
+    // 새로고침
+    $('#refreshBtn').on('click', function() {
+        location.reload();
+    });
+
+    // 필터링
+    $('#filterAll').on('click', function() {
+        $('#logTable tbody tr').show();
+        $('.btn-group button').removeClass('active');
+        $(this).addClass('active');
+    });
+
+    $('#filterMalicious').on('click', function() {
+        $('#logTable tbody tr').hide();
+        $('#logTable tbody tr[data-malicious="1"]').show();
+        $('.btn-group button').removeClass('active');
+        $(this).addClass('active');
+    });
+
+    $('#filterBlocked').on('click', function() {
+        $('#logTable tbody tr').hide();
+        $('#logTable tbody tr[data-recommendation="BLOCK"]').show();
+        $('.btn-group button').removeClass('active');
+        $(this).addClass('active');
+    });
+
+    // 상세 보기
+    $('.view-detail').on('click', function() {
+        const logId = $(this).data('log-id');
+        const log = allLogsData.find(function(l) { return l.id === logId; });
+        
+        if (log) {
+            showLogDetail(log);
+        }
+    });
+
+    function showLogDetail(log) {
+        let patterns = [];
+        try {
+            patterns = log.detected_patterns ? JSON.parse(log.detected_patterns) : [];
+        } catch (e) {
+            patterns = [];
+        }
+        
+        let html = '<div class="row">';
+        html += '<div class="col-md-6">';
+        html += '<h6>기본 정보</h6>';
+        html += '<ul class="list-unstyled">';
+        html += '<li><strong>ID:</strong> ' + log.id + '</li>';
+        html += '<li><strong>시간:</strong> ' + (log.timestamp || '-') + '</li>';
+        html += '<li><strong>사용자:</strong> ' + (log.user_id || 'anonymous') + '</li>';
+        html += '<li><strong>모드:</strong> ' + (log.is_vulnerable_mode ? '취약한 모드' : '방어 모드') + '</li>';
+        html += '</ul>';
+        html += '</div>';
+        html += '<div class="col-md-6">';
+        html += '<h6>탐지 결과</h6>';
+        html += '<ul class="list-unstyled">';
+        html += '<li><strong>악성 여부:</strong> ' + (log.is_malicious ? '✅ 악성' : '❌ 정상') + '</li>';
+        html += '<li><strong>위험도:</strong> ' + (log.risk_score * 100).toFixed(1) + '%</li>';
+        html += '<li><strong>탐지 방법:</strong> ' + (log.detection_method || 'N/A') + '</li>';
+        html += '<li><strong>권장 조치:</strong> ' + (log.recommendation || 'N/A') + '</li>';
+        html += '</ul>';
+        html += '</div>';
+        html += '</div>';
+        
+        html += '<hr>';
+        
+        html += '<h6>사용자 입력</h6>';
+        html += '<pre class="bg-light p-3 rounded">' + escapeHtml(log.user_input || '') + '</pre>';
+        
+        html += '<h6>AI 응답</h6>';
+        html += '<pre class="bg-light p-3 rounded">' + escapeHtml(log.response || 'N/A') + '</pre>';
+        
+        if (patterns.length > 0) {
+            html += '<h6>탐지된 패턴</h6>';
+            html += '<ul>';
+            patterns.forEach(function(pattern) {
+                html += '<li><pre class="mb-1">' + escapeHtml(JSON.stringify(pattern, null, 2)) + '</pre></li>';
+            });
+            html += '</ul>';
+        }
+        
+        $('#modalBody').html(html);
+        new bootstrap.Modal($('#detailModal')).show();
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    // 초기 필터 상태
+    $('#filterAll').addClass('active');
+});
+</script>
+{% endblock %}
