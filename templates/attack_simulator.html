@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}공격 시뮬레이터 - 프롬프트 인젝션 방어 시스템{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-bug"></i> 공격 시뮬레이터
+        </h1>
+        <p class="lead">
+            OWASP LLM01에 정의된 다양한 프롬프트 인젝션 공격 시나리오를 체계적으로 테스트하세요.
+        </p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- 공격 카테고리 선택 -->
+    <div class="col-md-4">
+        <div class="card sticky-top" style="top: 20px;">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-ul"></i> 공격 카테고리
+                </h5>
+            </div>
+            <div class="list-group list-group-flush" id="categoryList">
+                {% for category, attacks in scenarios.items() %}
+                <a href="#" class="list-group-item list-group-item-action category-item" data-category="{{ category }}">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">{{ category }}</h6>
+                        <span class="badge bg-danger rounded-pill">{{ attacks|length }}</span>
+                    </div>
+                    <small class="text-muted">{{ attacks|length }}개의 시나리오</small>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 공격 시나리오 및 실행 -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-card-list"></i> 공격 시나리오
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="scenarioContent">
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-arrow-left" style="font-size: 2rem;"></i>
+                        <p class="mt-3">왼쪽에서 카테고리를 선택하세요</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 실행 결과 -->
+        <div class="card mt-3" id="resultCard" style="display: none;">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-clipboard-data"></i> 실행 결과
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="executionResult"></div>
+            </div>
+        </div>
+
+        <!-- 일괄 테스트 -->
+        <div class="card mt-3">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="bi bi-lightning"></i> 일괄 테스트
+                </h5>
+            </div>
+            <div class="card-body">
+                <p>선택한 카테고리의 모든 공격을 한 번에 테스트합니다.</p>
+                <button class="btn btn-warning" id="batchTestBtn" disabled>
+                    <i class="bi bi-play-fill"></i> 일괄 테스트 실행
+                </button>
+                <div id="batchProgress" class="mt-3" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <p class="mt-2 mb-0 text-center" id="batchStatus"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up"></i> 테스트 통계
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-3">
+                        <h4 id="statTotal">0</h4>
+                        <small class="text-muted">총 테스트</small>
+                    </div>
+                    <div class="col-3">
+                        <h4 id="statBlocked" class="text-success">0</h4>
+                        <small class="text-muted">차단</small>
+                    </div>
+                    <div class="col-3">
+                        <h4 id="statPassed" class="text-danger">0</h4>
+                        <small class="text-muted">통과</small>
+                    </div>
+                    <div class="col-3">
+                        <h4 id="statRate">0%</h4>
+                        <small class="text-muted">차단율</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Jinja2 변수를 JavaScript로 안전하게 전달
+    const scenariosData = JSON.parse('{{ scenarios | tojson | safe }}');
+    let currentCategory = null;
+    let testStats = {
+        total: 0,
+        blocked: 0,
+        passed: 0
+    };
+
+    // 카테고리 선택
+    $('.category-item').on('click', function(e) {
+        e.preventDefault();
+        $('.category-item').removeClass('active');
+        $(this).addClass('active');
+        
+        currentCategory = $(this).data('category');
+        displayScenarios(currentCategory);
+        $('#batchTestBtn').prop('disabled', false);
+    });
+
+    // 시나리오 표시
+    function displayScenarios(category) {
+        const categoryScenarios = scenariosData[category];
+        let html = '<h5 class="mb-3">' + escapeHtml(category) + '</h5>';
+        
+        categoryScenarios.forEach(function(scenario, index) {
+            html += '<div class="card mb-3">';
+            html += '<div class="card-body">';
+            html += '<h6 class="card-title">' + escapeHtml(scenario.name) + '</h6>';
+            html += '<p class="card-text small text-muted">' + escapeHtml(scenario.description) + '</p>';
+            html += '<pre class="bg-light p-2 rounded"><code>' + escapeHtml(scenario.prompt) + '</code></pre>';
+            html += '<button class="btn btn-sm btn-primary test-scenario" data-index="' + index + '">';
+            html += '<i class="bi bi-play"></i> 테스트 실행';
+            html += '</button>';
+            html += '</div>';
+            html += '</div>';
+        });
+        
+        $('#scenarioContent').html(html);
+        
+        // 테스트 버튼 이벤트
+        $('.test-scenario').on('click', function() {
+            const index = $(this).data('index');
+            const scenario = categoryScenarios[index];
+            executeTest(scenario);
+        });
+    }
+
+    // 단일 테스트 실행
+    function executeTest(scenario) {
+        $('#resultCard').show();
+        $('#executionResult').html('<div class="spinner-border text-info" role="status"><span class="visually-hidden">Loading...</span></div>');
+        
+        $.ajax({
+            url: '/api/comparison',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ message: scenario.prompt }),
+            success: function(response) {
+                if (response.success) {
+                    displayTestResult(scenario, response);
+                    updateStats(response.protected.is_blocked);
+                }
+            },
+            error: function() {
+                $('#executionResult').html('<div class="alert alert-danger">테스트 실행 중 오류가 발생했습니다.</div>');
+            }
+        });
+    }
+
+    // 테스트 결과 표시
+    function displayTestResult(scenario, response) {
+        const isBlocked = response.protected.is_blocked;
+        const detection = response.protected.detection || {};
+        
+        let html = '<div class="alert ' + (isBlocked ? 'alert-success' : 'alert-danger') + '">';
+        html += '<h6>' + (isBlocked ? '✅ 공격 차단 성공' : '🚨 공격 통과 (취약점 발견)') + '</h6>';
+        html += '</div>';
+        
+        html += '<h6>공격 정보</h6>';
+        html += '<ul>';
+        html += '<li><strong>공격명:</strong> ' + escapeHtml(scenario.name) + '</li>';
+        html += '<li><strong>설명:</strong> ' + escapeHtml(scenario.description) + '</li>';
+        html += '<li><strong>위험도:</strong> ' + ((detection.risk_score || 0) * 100).toFixed(1) + '%</li>';
+        html += '</ul>';
+        
+        html += '<h6 class="mt-3">취약한 버전 응답</h6>';
+        html += '<div class="alert alert-danger">';
+        html += escapeHtml(response.vulnerable.response);
+        html += '</div>';
+        
+        html += '<h6>방어 버전 응답</h6>';
+        html += '<div class="alert ' + (isBlocked ? 'alert-success' : 'alert-warning') + '">';
+        html += escapeHtml(response.protected.response);
+        html += '</div>';
+        
+        $('#executionResult').html(html);
+    }
+
+    // 일괄 테스트
+    $('#batchTestBtn').on('click', function() {
+        if (!currentCategory) return;
+        
+        const categoryScenarios = scenariosData[currentCategory];
+        let completed = 0;
+        let blocked = 0;
+        
+        $('#batchProgress').show();
+        $(this).prop('disabled', true);
+        
+        function testNext(index) {
+            if (index >= categoryScenarios.length) {
+                // 완료
+                const rate = (blocked / categoryScenarios.length * 100).toFixed(1);
+                $('#batchStatus').html('<strong>완료:</strong> ' + categoryScenarios.length + '개 중 ' + blocked + '개 차단 (' + rate + '%)');
+                $('#batchTestBtn').prop('disabled', false);
+                return;
+            }
+            
+            const scenario = categoryScenarios[index];
+            const progress = ((index + 1) / categoryScenarios.length * 100).toFixed(0);
+            
+            $('.progress-bar').css('width', progress + '%');
+            $('#batchStatus').text('테스트 중... (' + (index + 1) + '/' + categoryScenarios.length + ')');
+            
+            $.ajax({
+                url: '/api/comparison',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ message: scenario.prompt }),
+                success: function(response) {
+                    if (response.success && response.protected.is_blocked) {
+                        blocked++;
+                    }
+                    updateStats(response.protected.is_blocked);
+                },
+                complete: function() {
+                    setTimeout(function() { testNext(index + 1); }, 500);
+                }
+            });
+        }
+        
+        testNext(0);
+    });
+
+    // 통계 업데이트
+    function updateStats(isBlocked) {
+        testStats.total++;
+        if (isBlocked) {
+            testStats.blocked++;
+        } else {
+            testStats.passed++;
+        }
+        
+        const rate = testStats.total > 0 ? 
+            (testStats.blocked / testStats.total * 100).toFixed(1) : 0;
+        
+        $('#statTotal').text(testStats.total);
+        $('#statBlocked').text(testStats.blocked);
+        $('#statPassed').text(testStats.passed);
+        $('#statRate').text(rate + '%');
+    }
+
+    // HTML 이스케이프
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+});
+</script>
+{% endblock %}

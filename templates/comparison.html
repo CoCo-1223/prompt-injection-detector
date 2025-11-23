@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}비교 분석 - 프롬프트 인젝션 방어 시스템{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-arrow-left-right"></i> Before vs After 비교 분석
+        </h1>
+        <p class="lead">
+            동일한 공격을 취약한 버전과 방어 적용 버전에 동시에 시도하여 방어 효과를 직접 비교하세요.
+        </p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-chat-dots"></i> 테스트 입력
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="testInput" class="form-label">공격 프롬프트 입력:</label>
+                    <textarea class="form-control" id="testInput" rows="3" placeholder="프롬프트를 입력하거나 아래 공격 시나리오를 선택하세요..."></textarea>
+                </div>
+                <button class="btn btn-primary" id="compareBtn">
+                    <i class="bi bi-arrow-left-right"></i> 비교 실행
+                </button>
+                <button class="btn btn-secondary" id="clearBtn">
+                    <i class="bi bi-trash"></i> 초기화
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 공격 시나리오 선택 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-check"></i> 사전 정의된 공격 시나리오
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for attack in attacks[:6] %}
+                    <div class="col-md-6 mb-2">
+                        <button class="btn btn-outline-danger w-100 text-start scenario-btn" data-prompt="{{ attack.prompt }}">
+                            <strong>{{ attack.name }}</strong><br>
+                            <small class="text-muted">{{ attack.description }}</small>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 비교 결과 -->
+<div class="row mt-4" id="resultSection" style="display: none;">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> BEFORE: 취약한 버전
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="vulnerableResult">
+                    <div class="spinner-border text-danger" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <small class="text-muted">
+                    <i class="bi bi-shield-x"></i> 방어 레이어: 없음
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-shield-check"></i> AFTER: 방어 적용 버전
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="protectedResult">
+                    <div class="spinner-border text-success" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <small class="text-muted">
+                    <i class="bi bi-shield-check"></i> 방어 레이어: Layer 1 + 2 + 3
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 분석 결과 -->
+<div class="row mt-4" id="analysisSection" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up"></i> 탐지 분석
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="analysisResult"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 테스트 히스토리 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history"></i> 테스트 히스토리
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm" id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>시간</th>
+                                <th>입력</th>
+                                <th>취약 버전</th>
+                                <th>방어 버전</th>
+                                <th>결과</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">
+                                    테스트 기록이 없습니다.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    const testInput = $('#testInput');
+    const compareBtn = $('#compareBtn');
+    const clearBtn = $('#clearBtn');
+    const resultSection = $('#resultSection');
+    const analysisSection = $('#analysisSection');
+    const vulnerableResult = $('#vulnerableResult');
+    const protectedResult = $('#protectedResult');
+    const analysisResult = $('#analysisResult');
+    const historyBody = $('#historyBody');
+
+    let testHistory = [];
+
+    // 시나리오 버튼 클릭
+    $('.scenario-btn').on('click', function() {
+        const prompt = $(this).data('prompt');
+        testInput.val(prompt);
+    });
+
+    // 비교 실행
+    compareBtn.on('click', function() {
+        const prompt = testInput.val().trim();
+        if (!prompt) {
+            alert('프롬프트를 입력해주세요.');
+            return;
+        }
+
+        // 결과 섹션 표시
+        resultSection.show();
+        analysisSection.show();
+        
+        // 로딩 상태
+        vulnerableResult.html('<div class="spinner-border text-danger" role="status"><span class="visually-hidden">Loading...</span></div>');
+        protectedResult.html('<div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div>');
+        analysisResult.html('<div class="spinner-border text-info" role="status"><span class="visually-hidden">Loading...</span></div>');
+        
+        compareBtn.prop('disabled', true);
+
+        // API 호출
+        $.ajax({
+            url: '/api/comparison',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ message: prompt }),
+            success: function(response) {
+                if (response.success) {
+                    displayResults(prompt, response.vulnerable, response.protected);
+                } else {
+                    alert('오류: ' + response.error);
+                }
+            },
+            error: function() {
+                alert('서버 오류가 발생했습니다.');
+            },
+            complete: function() {
+                compareBtn.prop('disabled', false);
+            }
+        });
+    });
+
+    // 결과 표시
+    function displayResults(prompt, vulnerable, protected) {
+        // 취약한 버전 결과
+        if (vulnerable.success) {
+            const vulnHtml = `
+                <div class="alert alert-danger">
+                    <strong>🚨 공격 성공</strong>
+                </div>
+                <div class="response-text">
+                    ${escapeHtml(vulnerable.response)}
+                </div>
+            `;
+            vulnerableResult.html(vulnHtml);
+        } else {
+            vulnerableResult.html(`<div class="alert alert-danger">오류: ${vulnerable.error}</div>`);
+        }
+
+        // 방어 버전 결과
+        if (protected.success) {
+            const isBlocked = protected.is_blocked;
+            const protHtml = `
+                <div class="alert ${isBlocked ? 'alert-success' : 'alert-warning'}">
+                    <strong>${isBlocked ? '✅ 공격 차단' : '⚠️ 응답 생성'}</strong>
+                </div>
+                <div class="response-text">
+                    ${escapeHtml(protected.response)}
+                </div>
+            `;
+            protectedResult.html(protHtml);
+        } else {
+            protectedResult.html(`<div class="alert alert-danger">오류: ${protected.error}</div>`);
+        }
+
+        // 분석 결과
+        displayAnalysis(prompt, vulnerable, protected);
+        
+        // 히스토리에 추가
+        addToHistory(prompt, vulnerable, protected);
+    }
+
+    // 분석 표시
+    function displayAnalysis(prompt, vulnerable, protected) {
+        const detection = protected.detection || {};
+        const isMalicious = detection.is_malicious;
+        const riskScore = (detection.risk_score * 100).toFixed(1);
+        
+        let analysisHtml = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>탐지 결과</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>악성 여부:</strong> 
+                            <span class="badge ${isMalicious ? 'bg-danger' : 'bg-success'}">
+                                ${isMalicious ? '악성' : '정상'}
+                            </span>
+                        </li>
+                        <li><strong>위험도:</strong> ${riskScore}%</li>
+                        <li><strong>탐지 방법:</strong> ${detection.detection_method || 'N/A'}</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>방어 효과</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>취약 버전:</strong> <span class="badge bg-danger">정보 유출 가능</span></li>
+                        <li><strong>방어 버전:</strong> <span class="badge bg-success">공격 차단</span></li>
+                        <li><strong>차단 여부:</strong> ${protected.is_blocked ? '✅ 차단됨' : '❌ 통과'}</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        
+        if (detection.detected_patterns && detection.detected_patterns.length > 0) {
+            analysisHtml += `
+                <hr>
+                <h6>탐지된 패턴</h6>
+                <ul>
+            `;
+            detection.detected_patterns.forEach(pattern => {
+                analysisHtml += `<li>${JSON.stringify(pattern)}</li>`;
+            });
+            analysisHtml += `</ul>`;
+        }
+        
+        analysisResult.html(analysisHtml);
+    }
+
+    // 히스토리에 추가
+    function addToHistory(prompt, vulnerable, protected) {
+        const timestamp = new Date().toLocaleTimeString('ko-KR');
+        const vulnStatus = vulnerable.success ? '🔴 유출' : '❌ 오류';
+        const protStatus = protected.is_blocked ? '🛡️ 차단' : '⚠️ 통과';
+        const result = protected.is_blocked ? '<span class="badge bg-success">방어 성공</span>' : '<span class="badge bg-warning">추가 검토 필요</span>';
+        
+        const row = `
+            <tr>
+                <td>${timestamp}</td>
+                <td><small>${escapeHtml(prompt.substring(0, 50))}${prompt.length > 50 ? '...' : ''}</small></td>
+                <td>${vulnStatus}</td>
+                <td>${protStatus}</td>
+                <td>${result}</td>
+            </tr>
+        `;
+        
+        if (historyBody.find('td[colspan]').length > 0) {
+            historyBody.html('');
+        }
+        
+        historyBody.prepend(row);
+    }
+
+    // 초기화
+    clearBtn.on('click', function() {
+        testInput.val('');
+        resultSection.hide();
+        analysisSection.hide();
+    });
+
+    // HTML 이스케이프
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+});
+</script>
+{% endblock %}

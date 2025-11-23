@@ -1,0 +1,72 @@
+{
+  "direct_injection": {
+    "patterns": [
+      "ignore\\s+(previous|all|above|prior)\\s+instructions?",
+      "disregard\\s+(previous|all|above|prior)",
+      "forget\\s+(everything|all|previous)",
+      "new\\s+instructions?:",
+      "you\\s+are\\s+now",
+      "pretend\\s+(to\\s+be|you\\s+are)",
+      "act\\s+as",
+      "roleplay",
+      "system\\s*:",
+      "assistant\\s*:"
+    ],
+    "risk_level": "HIGH",
+    "action": "BLOCK",
+    "description": "직접적인 명령 무시 및 인젝션 시도"
+  },
+  "information_extraction": {
+    "patterns": [
+      "(secret|hidden|private)\\s+(code|password|key)",
+      "reveal\\s+(the|your)\\s+(secret|code|password)",
+      "what\\s+is\\s+(the|your)\\s+(secret|code)",
+      "tell\\s+me\\s+(the|your)\\s+(secret|code)",
+      "system\\s+prompt",
+      "original\\s+instructions",
+      "비밀\\s*코드",
+      "시스템\\s*프롬프트"
+    ],
+    "risk_level": "HIGH",
+    "action": "BLOCK",
+    "description": "민감 정보 추출 시도"
+  },
+  "korean_injection": {
+    "patterns": [
+      "이전\\s*(지시|명령|규칙).*무시",
+      "(무시|잊어|삭제).*이전",
+      "너는\\s*이제",
+      "~인\\s*척",
+      "역할극",
+      "비밀.*말해"
+    ],
+    "risk_level": "HIGH",
+    "action": "BLOCK",
+    "description": "한글 프롬프트 인젝션"
+  },
+  "jailbreak_attempts": {
+    "patterns": [
+      "dan\\s+mode",
+      "developer\\s+mode",
+      "evil\\s+mode",
+      "do\\s+anything\\s+now",
+      "opposite\\s+mode",
+      "jailbreak"
+    ],
+    "risk_level": "HIGH",
+    "action": "BLOCK",
+    "description": "AI 탈옥 시도"
+  },
+  "prompt_leaking": {
+    "patterns": [
+      "print\\s+(your|the)\\s+prompt",
+      "show\\s+me\\s+(your|the)\\s+(prompt|instructions)",
+      "output\\s+(your|the)\\s+instructions",
+      "프롬프트.*출력",
+      "지시문.*보여"
+    ],
+    "risk_level": "MEDIUM",
+    "action": "WARN",
+    "description": "프롬프트 유출 시도"
+  }
+}
